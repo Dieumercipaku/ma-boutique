@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard Boutique</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>📊 Ventes par jour</h2>
+<canvas id="chart"></canvas>
+
+<script>
+fetch("http://localhost:5000/api/stats/1")
+  .then(res => res.json())
+  .then(data => {
+
+    const labels = data.map(d => d.date);
+    const values = data.map(d => d.total);
+
+    new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Ventes",
+          data: values
+        }]
+      }
+    });
+
+  });
+</script>
+
+</body>
+</html>

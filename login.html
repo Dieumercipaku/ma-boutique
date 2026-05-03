@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login Vendeur</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+
+<h2>🔐 Connexion Vendeur</h2>
+
+<input type="email" id="email" placeholder="Email" />
+<input type="password" id="password" placeholder="Mot de passe" />
+
+<button onclick="login()">Se connecter</button>
+
+<script>
+async function login() {
+  try {
+    const res = await axios.post("http://localhost:5000/api/auth/login", {
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
+    });
+
+    // 💾 stocker token
+    localStorage.setItem("token", res.data.token);
+
+    alert("Connexion réussie !");
+    window.location.href = "vendeur.html";
+
+  } catch (err) {
+    alert("Erreur login ❌");
+  }
+}
+</script>
+
+</body>
+</html>

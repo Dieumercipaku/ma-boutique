@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gestion Boutique PRO</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: Arial; background:#f4f6f9; padding:20px; }
+    .container { max-width:700px; margin:auto; background:white; padding:20px; border-radius:10px; }
+    input, select { width:100%; padding:10px; margin-top:10px; border-radius:6px; }
+    button { width:100%; padding:10px; margin-top:10px; border:none; border-radius:6px; background:#4CAF50; color:white; }
+    .danger { background:red; }
+    .item { display:flex; justify-content:space-between; padding:5px; border-bottom:1px solid #ddd; }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🏪 Gestion Boutique</h2>
+
+<button class="danger" onclick="logout()">🚪 Déconnexion</button>
+
+<!-- 🔥 PRODUITS -->
+<button onclick="toggleProducts()">👁️ Cacher / Afficher Produits</button>
+
+<div id="productSection">
+
+<h3>➕ Ajouter / Modifier produit</h3>
+<input id="name" placeholder="Nom">
+<input id="price" placeholder="Prix">
+<input id="stock" placeholder="Stock">
+<button onclick="saveProduct()">💾 Enregistrer</button>
+
+<h3>📦 Liste Produits</h3>
+<div id="productList"></div>
+
+</div>
+
+<!-- 🛒 CAISSE -->
+<h3>🛒 Caisse</h3>
+<select id="products"></select>
+<input id="quantity" type="number" value="1">
+<button onclick="addToCart()">Ajouter</button>
+
+<div id="cart"></div>
+<h3>Total: <span id="total">0</span> CDF</h3>
+
+<button onclick="checkout()">💰 Vendre</button>
+
+<!-- 💳 PAIEMENT -->
+<h3>💳 Paiement Mobile</h3>
+<input id="phone" placeholder="Numéro client (243...)">
+<button onclick="pay()">💳 Payer</button>
+
+<!-- 📊 DASHBOARD -->
+<h3>📊 Dashboard</h3>
+<canvas id="chart"></canvas>
+
+</div>
+
+<script>
+
+const API = "http://localhost:5000";
+let products = [];
+let cart = [];
+let editId = null;
+
+// 🔐 sécurité login
+if (!localStorage.getItem("token")) {
+  window.location.href = "login.html";
+}
+
+// 📦 charger produits
+async function loadProducts() {
+  try {
+    const res = await axios.get(API + "/api/products/1");
+    products = res.data;
+
+    const select = document.getElementById("products");
+    const list = document.getElementById("productList");
+
+    select.innerHTML = "";
+    list.innerHTML = "";
+
+    products.forEach(p => {
+
+      // select
+      const option = document.createElement("option");
+      option.value = p.id;
+      option.text = `${p.name} - ${p.price} CDF`;
+      select.appendChild(option);
+
+      // liste avec stock
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        ${p.name} - ${p.price} CDF - Stock: ${p.stock}
+        <div>
+          <button onclick="editProduct(${p.id})">✏️</button>
+          <button class="danger" onclick="deleteProduct(${p.id})">🗑️</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+
+  } catch (err) {
+    alert("Erreur chargement produits ❌");
+    console.log(err);
+  }
+}
+
+loadProducts();
+
+// 💾 ajouter / modifier
+async function saveProduct() {
+  const data = {
+    shop_id:1,
+    name: name.value,
+    price: price.value,
+    stock: stock.value
+  };
+
+  try {
+    if (editId) {
+      await axios.put(API + "/api/products/" + editId, data);
+      editId = null;
+    } else {
+      await axios.post(API + "/api/products", data);
+    }
+
+    name.value = "";
+    price.value = "";
+    stock.value = "";
+
+    loadProducts();
+
+  } catch (err) {
+    alert("Erreur produit ❌");
+  }
+}
+
+// ✏️ modifier
+function editProduct(id) {
+  const p = products.find(x => x.id == id);
+
+  name.value = p.name;
+  price.value = p.price;
+  stock.value = p.stock;
+
+  editId = id;
+}
+
+// 🗑️ supprimer
+async function deleteProduct(id) {
+  await axios.delete(API + "/api/products/" + id);
+  loadProducts();
+}
+
+// 🛒 panier
+function addToCart() {
+  const id = document.getElementById("products").value;
+  const q = Number(document.getElementById("quantity").value);
+
+  const p = products.find(x => x.id == id);
+
+  if (!p || q <= 0) {
+    alert("Erreur produit ❌");
+    return;
+  }
+
+  cart.push({
+    product_id:id,
+    quantity:q,
+    price:Number(p.price),
+    name:p.name
+  });
+
+  renderCart();
+}
+
+// afficher panier
+function renderCart() {
+  const cartDiv = document.getElementById("cart");
+  const totalSpan = document.getElementById("total");
+
+  let total = 0;
+  cartDiv.innerHTML = "";
+
+  cart.forEach(i => {
+    total += i.price * i.quantity;
+
+    cartDiv.innerHTML += `
+      <div class="item">
+        ${i.name} x ${i.quantity}
+      </div>
+    `;
+  });
+
+  totalSpan.textContent = total;
+}
+
+// 💰 vente
+async function checkout() {
+  if (cart.length === 0) {
+    alert("Panier vide ❌");
+    return;
+  }
+
+  await axios.post(API + "/api/sales", {
+    shop_id:1,
+    items:cart
+  });
+
+  cart = [];
+  renderCart();
+  loadStats();
+}
+
+// 💳 paiement
+async function pay() {
+  if (cart.length === 0) {
+    alert("Panier vide ❌");
+    return;
+  }
+
+  const phone = document.getElementById("phone").value;
+  const total = document.getElementById("total").textContent;
+
+  if (!phone) {
+    alert("Numéro requis ❌");
+    return;
+  }
+
+  try {
+
+    await axios.post(API + "/api/sales", {
+      shop_id:1,
+      items:cart
+    });
+
+    await axios.post(API + "/api/payment", {
+      amount: total,
+      phone: phone
+    });
+
+    alert("Paiement réussi 💰");
+
+    cart = [];
+    renderCart();
+    loadProducts();
+
+  } catch (err) {
+    alert("Erreur paiement ❌");
+  }
+}
+
+// 📊 dashboard
+async function loadStats() {
+  const res = await axios.get(API + "/api/stats/1");
+
+  const labels = res.data.map(x => x.date);
+  const data = res.data.map(x => x.total);
+
+  new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{ label: "Ventes", data }]
+    }
+  });
+}
+
+loadStats();
+
+// 👁️ cacher produits
+function toggleProducts() {
+  const section = document.getElementById("productSection");
+  section.style.display = (section.style.display === "none") ? "block" : "none";
+}
+
+// 🚪 logout
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
+}
+
+</script>
+
+</body>
+</html>
