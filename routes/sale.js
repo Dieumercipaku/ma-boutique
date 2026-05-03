@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require("../db");
 const auth = require("../middleware/authMiddleware");
 
-
 // 💰 créer une vente
 router.post("/", async (req, res) => {
   try {
@@ -33,7 +32,8 @@ router.post("/", async (req, res) => {
           error: `Stock insuffisant pour ${prod.name} ❌`
         });
       }
-total += Number(prod.price) * item.quantity;
+
+      total += Number(prod.price) * item.quantity;
     }
 
     // 🧾 créer vente
@@ -75,18 +75,3 @@ total += Number(prod.price) * item.quantity;
 });
 
 module.exports = router;
-// vérifier stock avant vente
-const product = await pool.query(
-  "SELECT stock FROM products WHERE id = $1",
-  [item.product_id]
-);
-
-if (product.rows[0].stock < item.quantity) {
-  return res.status(400).json({
-    error: "Stock insuffisant ❌"
-  });
-}
-await pool.query(
-  "UPDATE products SET stock = stock - $1 WHERE id = $2",
-  [item.quantity, item.product_id]
-);
