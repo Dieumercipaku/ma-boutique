@@ -75,3 +75,18 @@ total += Number(prod.price) * item.quantity;
 });
 
 module.exports = router;
+// vérifier stock avant vente
+const product = await pool.query(
+  "SELECT stock FROM products WHERE id = $1",
+  [item.product_id]
+);
+
+if (product.rows[0].stock < item.quantity) {
+  return res.status(400).json({
+    error: "Stock insuffisant ❌"
+  });
+}
+await pool.query(
+  "UPDATE products SET stock = stock - $1 WHERE id = $2",
+  [item.quantity, item.product_id]
+);

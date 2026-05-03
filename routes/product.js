@@ -9,7 +9,6 @@ router.post("/", async (req, res) => {
 
     const { shop_id, name, price, stock } = req.body;
 
-    // validation
     if (!shop_id || !name) {
       return res.status(400).json({
         error: "shop_id et name sont obligatoires ❌"
@@ -18,7 +17,7 @@ router.post("/", async (req, res) => {
 
     const result = await pool.query(
       "INSERT INTO products (shop_id, name, price, stock) VALUES ($1, $2, $3, $4) RETURNING *",
-      [shop_id, name, price, stock]
+      [shop_id, name, Number(price), Number(stock)]
     );
 
     res.json(result.rows[0]);
@@ -32,7 +31,7 @@ router.post("/", async (req, res) => {
 router.get("/:shop_id", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM products WHERE shop_id = $1",
+      "SELECT * FROM products WHERE shop_id = $1 ORDER BY id DESC",
       [req.params.shop_id]
     );
 
@@ -43,7 +42,6 @@ router.get("/:shop_id", async (req, res) => {
   }
 });
 
-module.exports = router;
 // ✏️ Modifier produit
 router.put("/:id", async (req, res) => {
   try {
@@ -51,7 +49,7 @@ router.put("/:id", async (req, res) => {
 
     const result = await pool.query(
       "UPDATE products SET name=$1, price=$2, stock=$3 WHERE id=$4 RETURNING *",
-      [name, price, stock, req.params.id]
+      [name, Number(price), Number(stock), req.params.id]
     );
 
     res.json(result.rows[0]);
@@ -75,3 +73,5 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+module.exports = router;
