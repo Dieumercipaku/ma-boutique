@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+
 const app = express();
 
 app.use(cors());
@@ -7,13 +8,11 @@ app.use(express.json());
 
 // 📦 DB
 const pool = require("./db");
-pool.query("SELECT NOW()", (err, res) => {
-  if (err) {
-    console.error("ERREUR DB ❌", err);
-  } else {
-    console.log("Connexion DB OK ✅");
-  }
-});
+
+// ✅ test connexion DB (SANS await direct)
+pool.query("SELECT NOW()")
+  .then(() => console.log("Connexion DB OK ✅"))
+  .catch(err => console.error("ERREUR DB ❌", err.message));
 
 // 🔐 Middleware
 const authMiddleware = require("./middleware/authMiddleware");
@@ -49,8 +48,15 @@ app.use("/api/top-products", require("./routes/topProducts"));
 app.use("/api/sales-details", require("./routes/salesDetails"));
 app.use("/api/payment", require("./routes/payment"));
 
-// 🚀 START SERVER (TOUJOURS À LA FIN)
+// ❌ gestion erreur globale (important)
+app.use((err, req, res, next) => {
+  console.error("Erreur serveur ❌", err.stack);
+  res.status(500).json({ error: "Erreur serveur" });
+});
+
+// 🚀 START SERVER
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-  console.log("Serveur lancé 🚀");
+  console.log(`Serveur lancé sur port ${PORT} 🚀`);
 });
