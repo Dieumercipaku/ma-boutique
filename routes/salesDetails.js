@@ -2,25 +2,30 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-router.get("/:shop_id", async (req, res) => {
+// 📄 détails ventes
+router.get("/", async (req, res) => {
   try {
-    const { shop_id } = req.params;
 
-    const result = await pool.query(
-      `SELECT s.id as sale_id, s.total, s.created_at,
-              p.name, si.quantity, si.price
-       FROM sales s
-       JOIN sale_items si ON si.sale_id = s.id
-       JOIN products p ON p.id = si.product_id
-       WHERE s.shop_id = $1
-       ORDER BY s.created_at DESC`,
-      [shop_id]
-    );
+    const result = await pool.query(`
+      SELECT 
+        s.id AS sale_id,
+        p.name AS product_name,
+        si.quantity,
+        si.price,
+        s.total,
+        s.created_at
+      FROM sales s
+      JOIN sale_items si ON si.sale_id = s.id
+      JOIN products p ON p.id = si.product_id
+      ORDER BY s.created_at DESC
+    `);
 
     res.json(result.rows);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
