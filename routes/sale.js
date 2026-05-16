@@ -87,3 +87,25 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+module.exports = router;
+// 📋 récupérer toutes les ventes
+router.get("/", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        s.id,
+        s.shop_id,
+        s.total,
+        s.created_at
+      FROM sales s
+      ORDER BY s.created_at DESC
+    `);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
