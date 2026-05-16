@@ -2,43 +2,41 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-router.get("/:shop_id", async (req, res) => {
+// 📊 dashboard stats
+router.get("/", async (req, res) => {
   try {
-    const { shop_id } = req.params;
 
     // 💰 total ventes
-    const totalSales = await pool.query(
-      "SELECT COALESCE(SUM(total),0) FROM sales WHERE shop_id = $1",
-      [shop_id]
+    const sales = await pool.query(
+      "SELECT COALESCE(SUM(total),0) AS total_sales FROM sales"
     );
 
-    // 📦 nombre produits
-    const totalProducts = await pool.query(
-      "SELECT COUNT(*) FROM products WHERE shop_id = $1",
-      [shop_id]
+    // 📦 total produits
+    const products = await pool.query(
+      "SELECT COUNT(*) AS total_products FROM products"
     );
 
-    // 🧾 nombre ventes
-    const totalOrders = await pool.query(
-      "SELECT COUNT(*) FROM sales WHERE shop_id = $1",
-      [shop_id]
+    // 🛒 total ventes count
+    const orders = await pool.query(
+      "SELECT COUNT(*) AS total_orders FROM sales"
     );
 
-    // 📉 stock total
-    const totalStock = await pool.query(
-      "SELECT COALESCE(SUM(stock),0) FROM products WHERE shop_id = $1",
-      [shop_id]
+    // 📉 stock faible
+    const lowStock = await pool.query(
+      "SELECT COUNT(*) AS low_stock FROM products WHERE stock <= 5"
     );
 
     res.json({
-      total_sales: totalSales.rows[0].coalesce,
-      total_products: totalProducts.rows[0].count,
-      total_orders: totalOrders.rows[0].count,
-      total_stock: totalStock.rows[0].coalesce
+      total_sales: sales.rows[0].total_sales,
+      total_products: products.rows[0].total_products,
+      total_orders: orders.rows[0].total_orders,
+      low_stock: lowStock.rows[0].low_stock
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
