@@ -56,9 +56,8 @@ const addProduct = async () => {
     console.log(err);
 
     alert("Erreur ajout produit ❌");
+
   }
-};
-  const addProduct = async () => {
 
   try {
 

@@ -18,8 +18,8 @@ const loadProducts = async () => {
   try {
 
     const res = await axios.get(
-      "https://ma-boutique-npcs.onrender.com/api/products"
-    );
+  "https://ma-boutique-npcs.onrender.com/api/products/1"
+);
 
     console.log("PRODUITS :", res.data);
 
