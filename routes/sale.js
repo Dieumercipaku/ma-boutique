@@ -1,111 +1,221 @@
 const express = require("express");
+
 const router = express.Router();
+
 const pool = require("../db");
-const auth = require("../middleware/authMiddleware");
 
-// 💰 créer une vente
+// ================= ADD SALE =================
+
 router.post("/", async (req, res) => {
+
   try {
-    const { shop_id, items } = req.body;
 
-    if (!shop_id || !items || items.length === 0) {
-      return res.status(400).json({ error: "Données invalides ❌" });
-    }
+    const {
+      total,
+      items,
+      seller
+    } = req.body;
 
-    let total = 0;
+    // ================= INSERT SALE =================
 
-    // 🧮 calcul total + vérification stock
-    for (let item of items) {
-      const product = await pool.query(
-        "SELECT * FROM products WHERE id = $1",
-        [item.product_id]
-      );
-
-      if (product.rows.length === 0) {
-        return res.status(400).json({ error: "Produit introuvable ❌" });
-      }
-
-      const prod = product.rows[0];
-
-      if (prod.stock < item.quantity) {
-        return res.status(400).json({
-          error: `Stock insuffisant pour ${prod.name} ❌`
-        });
-      }
-
-      total += Number(prod.price) * item.quantity;
-    }
-
-    // 🧾 créer vente
-    const sale = await pool.query(
-      "INSERT INTO sales (shop_id, total) VALUES ($1, $2) RETURNING *",
-      [shop_id, total]
+    const saleResult = await pool.query(
+      `
+      INSERT INTO sales(
+        total,
+        seller
+      )
+      VALUES($1,$2)
+      RETURNING id
+      `,
+      [
+        total,
+        seller || "Caissier"
+      ]
     );
 
-    const sale_id = sale.rows[0].id;
+    const saleId =
+      saleResult.rows[0].id;
 
-    // 📦 enregistrer produits + réduire stock
-    for (let item of items) {
-      const product = await pool.query(
-        "SELECT * FROM products WHERE id = $1",
-        [item.product_id]
-      );
+    // ================= UPDATE STOCK =================
 
-      const prod = product.rows[0];
+    if (items && items.length > 0) {
 
-      await pool.query(
-        "INSERT INTO sale_items (sale_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)",
-        [sale_id, item.product_id, item.quantity, prod.price]
-      );
+      for (const item of items) {
 
-      await pool.query(
-        "UPDATE products SET stock = stock - $1 WHERE id = $2",
-        [item.quantity, item.product_id]
-      );
+        await pool.query(
+          `
+          UPDATE products
+          SET stock = stock - $1
+          WHERE id = $2
+          `,
+          [
+            item.quantity,
+            item.id
+          ]
+        );
+      }
     }
 
     res.json({
-      message: "Vente enregistrée 💰",
-      total: total
+      success: true,
+      saleId
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur ❌"
+    });
   }
 });
 
-module.exports = router;
-router.get("/", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT * FROM sales ORDER BY created_at DESC"
-    );
+// ================= DAILY =================
 
-    res.json(result.rows);
+router.get("/daily", async (req, res) => {
+
+  try {
+
+    const result = await pool.query(`
+      SELECT COALESCE(
+        SUM(total),0
+      ) AS total
+      FROM sales
+      WHERE DATE(created_at)
+      =
+      CURRENT_DATE
+    `);
+
+    res.json(result.rows[0]);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
   }
 });
-module.exports = router;
-// 📋 récupérer toutes les ventes
-router.get("/", async (req, res) => {
+
+// ================= WEEKLY =================
+
+router.get("/weekly", async (req, res) => {
+
   try {
+
     const result = await pool.query(`
-      SELECT 
-        s.id,
-        s.shop_id,
-        s.total,
-        s.created_at
-      FROM sales s
-      ORDER BY s.created_at DESC
+      SELECT COALESCE(
+        SUM(total),0
+      ) AS total
+      FROM sales
+      WHERE created_at >=
+      NOW() - INTERVAL '7 days'
+    `);
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
+  }
+});
+
+// ================= MONTHLY =================
+
+router.get("/monthly", async (req, res) => {
+
+  try {
+
+    const result = await pool.query(`
+      SELECT COALESCE(
+        SUM(total),0
+      ) AS total
+      FROM sales
+      WHERE DATE_TRUNC(
+        'month',
+        created_at
+      )
+      =
+      DATE_TRUNC(
+        'month',
+        CURRENT_DATE
+      )
+    `);
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
+  }
+});
+
+// ================= YEARLY =================
+
+router.get("/yearly", async (req, res) => {
+
+  try {
+
+    const result = await pool.query(`
+      SELECT COALESCE(
+        SUM(total),0
+      ) AS total
+      FROM sales
+      WHERE DATE_TRUNC(
+        'year',
+        created_at
+      )
+      =
+      DATE_TRUNC(
+        'year',
+        CURRENT_DATE
+      )
+    `);
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
+  }
+});
+
+// ================= HISTORY =================
+
+router.get("/history", async (req, res) => {
+
+  try {
+
+    const result = await pool.query(`
+      SELECT *
+      FROM sales
+      ORDER BY created_at DESC
     `);
 
     res.json(result.rows);
 
   } catch (err) {
+
+    console.log(err);
+
     res.status(500).json({
-      error: err.message
+      error: "Erreur serveur"
     });
   }
 });
+
+module.exports = router;

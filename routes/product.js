@@ -2,75 +2,173 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// 🔥 Ajouter produit
+// ===============================
+// AJOUT PRODUIT
+// ===============================
+
 router.post("/", async (req, res) => {
   try {
-    console.log("BODY:", req.body);
+    const {
+      shop_id,
+      name,
+      price,
+      stock
+    } = req.body;
 
-    const { shop_id, name, price, stock } = req.body;
-
-    if (!shop_id || !name) {
-      return res.status(400).json({
-        error: "shop_id et name sont obligatoires ❌"
-      });
-    }
-
-    const result = await pool.query(
-      "INSERT INTO products (shop_id, name, price, stock) VALUES ($1, $2, $3, $4) RETURNING *",
-      [shop_id, name, Number(price), Number(stock)]
+    const newProduct = await pool.query(
+      `
+      INSERT INTO products
+      (shop_id, name, price, stock)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
+      [shop_id, name, price, stock]
     );
 
-    res.json(result.rows[0]);
+    res.json(newProduct.rows[0]);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
   }
 });
 
-// 🔥 Voir produits d’une boutique
-router.get("/:shop_id", async (req, res) => {
+// ===============================
+// TOUS LES PRODUITS
+// ===============================
+
+router.get("/", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM products WHERE shop_id = $1 ORDER BY id DESC",
-      [req.params.shop_id]
-    );
 
-    res.json(result.rows);
+    const products = await pool.query(`
+      SELECT *
+      FROM products
+      ORDER BY id DESC
+    `);
+
+    res.json(products.rows);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
   }
 });
 
-// ✏️ Modifier produit
+// ===============================
+// PRODUITS PAR BOUTIQUE
+// ===============================
+
+router.get("/:shopId", async (req, res) => {
+  try {
+
+    const { shopId } = req.params;
+
+    const products = await pool.query(
+      `
+      SELECT *
+      FROM products
+      WHERE shop_id = $1
+      ORDER BY id DESC
+      `,
+      [shopId]
+    );
+
+    res.json(products.rows);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
+  }
+});
+
+// ===============================
+// MODIFIER PRODUIT
+// ===============================
+
 router.put("/:id", async (req, res) => {
+
   try {
-    const { name, price, stock } = req.body;
+
+    const { id } = req.params;
+
+    const {
+      name,
+      price,
+      stock
+    } = req.body;
 
     const result = await pool.query(
-      "UPDATE products SET name=$1, price=$2, stock=$3 WHERE id=$4 RETURNING *",
-      [name, Number(price), Number(stock), req.params.id]
+      `
+      UPDATE products
+      SET
+        name = $1,
+        price = $2,
+        stock = $3
+      WHERE id = $4
+      RETURNING *
+      `,
+      [
+        name,
+        price,
+        stock,
+        id
+      ]
     );
 
     res.json(result.rows[0]);
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
   }
 });
 
-// 🗑️ Supprimer produit
+// ===============================
+// SUPPRIMER PRODUIT
+// ===============================
+
 router.delete("/:id", async (req, res) => {
+
   try {
+
+    const { id } = req.params;
+
     await pool.query(
-      "DELETE FROM products WHERE id = $1",
-      [req.params.id]
+      `
+      DELETE FROM products
+      WHERE id = $1
+      `,
+      [id]
     );
 
-    res.json({ message: "Produit supprimé ✅" });
+    res.json({
+      success: true,
+      message: "Produit supprimé"
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+
+    console.log(err);
+
+    res.status(500).json({
+      error: "Erreur serveur"
+    });
   }
 });
 
