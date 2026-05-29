@@ -19,19 +19,17 @@ router.post("/", async (req, res) => {
     // ================= INSERT SALE =================
 
     const saleResult = await pool.query(
-      `
-      INSERT INTO sales(
-        total,
-        seller
-      )
-      VALUES($1,$2)
-      RETURNING id
-      `,
-      [
-        total,
-        seller || "Caissier"
-      ]
-    );
+  `
+  INSERT INTO sales(
+    total
+  )
+  VALUES($1)
+  RETURNING id
+  `,
+  [
+    total
+  ]
+);
 
     const saleId =
       saleResult.rows[0].id;
