@@ -7,185 +7,93 @@ const pool = require("../db");
 // ===============================
 
 router.post("/", async (req, res) => {
-  try {
-    const { shop_id, name, price, stock } = req.body;
-
-    if (!shop_id || !name) {
-      return res.status(400).json({
-        error: "Informations manquantes"
-      });
-    }
-
-    const newProduct = await pool.query(
-      `
-      INSERT INTO products
-      (shop_id, name, price, stock)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-      `,
-      [
-        shop_id,
-        name,
-        Number(price) || 0,
-        Number(stock) || 0
-      ]
-    );
-
-    res.json(newProduct.rows[0]);
-
-  } catch (err) {
-    console.log(err);
-
-    res.status(500).json({
-      error: "Erreur serveur"
-    });
-  }
-});
-
-// ===============================
-// TOUS LES PRODUITS
-// ===============================
-
-router.get("/", async (req, res) => {
-  try {
-
-    const products = await pool.query(`
-      SELECT *
-      FROM products
-      ORDER BY id DESC
-    `);
-
-    res.json(products.rows);
-
-  } catch (err) {
-
-    console.log(err);
-
-    res.status(500).json({
-      error: "Erreur serveur"
-    });
-  }
-});
-
-// ===============================
-// PRODUITS PAR BOUTIQUE
-// ===============================
-
-router.get("/:shopId", async (req, res) => {
-  try {
-
-    const { shopId } = req.params;
-
-    const products = await pool.query(
-      `
-      SELECT *
-      FROM products
-      WHERE shop_id = $1
-      ORDER BY id DESC
-      `,
-      [shopId]
-    );
-
-    res.json(products.rows);
-
-  } catch (err) {
-
-    console.log(err);
-
-    res.status(500).json({
-      error: "Erreur serveur"
-    });
-  }
-});
-
-// ===============================
-// MODIFIER PRODUIT
-// ===============================
-
-router.put("/:id", async (req, res) => {
 
   try {
 
-    const { id } = req.params;
+    console.log("===== AJOUT PRODUIT =====");
+    console.log(req.body);
 
     const {
+      shop_id,
       name,
       price,
       stock
     } = req.body;
 
+    if (!shop_id) {
+      return res.status(400).json({
+        error: "shop_id manquant"
+      });
+    }
+
+    if (!name) {
+      return res.status(400).json({
+        error: "name manquant"
+      });
+    }
+
     const result = await pool.query(
       `
-      UPDATE products
-      SET
-        name = $1,
-        price = $2,
-        stock = $3
-      WHERE id = $4
+      INSERT INTO products
+      (
+        shop_id,
+        name,
+        price,
+        stock
+      )
+      VALUES
+      (
+        $1,
+        $2,
+        $3,
+        $4
+      )
       RETURNING *
       `,
       [
+        Number(shop_id),
         name,
-        Number(price),
-        Number(stock),
-        id
+        Number(price || 0),
+        Number(stock || 0)
       ]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: "Produit introuvable"
-      });
-    }
+    console.log("PRODUIT AJOUTE");
+    console.log(result.rows[0]);
 
     res.json(result.rows[0]);
 
   } catch (err) {
 
+    console.log("ERREUR PRODUIT");
     console.log(err);
 
     res.status(500).json({
-      error: "Erreur serveur"
+      error: err.message
     });
   }
 });
 
 // ===============================
-// SUPPRIMER PRODUIT
+// LISTE PRODUITS
 // ===============================
 
-router.delete("/:id", async (req, res) => {
+router.get("/", async (req, res) => {
 
   try {
 
-    const { id } = req.params;
-
     const result = await pool.query(
-      `
-      DELETE FROM products
-      WHERE id = $1
-      RETURNING *
-      `,
-      [id]
+      "SELECT * FROM products ORDER BY id DESC"
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: "Produit introuvable"
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Produit supprimé"
-    });
+    res.json(result.rows);
 
   } catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      error: "Erreur serveur"
+      error: err.message
     });
   }
 });
