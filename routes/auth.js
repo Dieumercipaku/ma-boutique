@@ -65,19 +65,21 @@ router.post("/login", async (req, res) => {
     );
 
     console.log("CONNEXION REUSSIE");
-
-    res.json({
-
-      token,
-
-      user: {
+console.log("USER ENVOYE =", {
   id: user.rows[0].id,
   shop_id: user.rows[0].shop_id,
   name: user.rows[0].name,
   role: user.rows[0].role
-}
-
-    });
+});
+   res.json({
+  token: token,
+  user: {
+    id: user.rows[0].id,
+    shop_id: user.rows[0].shop_id,
+    name: user.rows[0].name,
+    role: user.rows[0].role
+  }
+});
 
   } catch (err) {
 
