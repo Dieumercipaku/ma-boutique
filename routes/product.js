@@ -8,12 +8,13 @@ const pool = require("../db");
 
 router.post("/", async (req, res) => {
   try {
-    const {
-      shop_id,
-      name,
-      price,
-      stock
-    } = req.body;
+    const { shop_id, name, price, stock } = req.body;
+
+    if (!shop_id || !name) {
+      return res.status(400).json({
+        error: "Informations manquantes"
+      });
+    }
 
     const newProduct = await pool.query(
       `
@@ -22,13 +23,17 @@ router.post("/", async (req, res) => {
       VALUES ($1, $2, $3, $4)
       RETURNING *
       `,
-      [shop_id, name, price, stock]
+      [
+        shop_id,
+        name,
+        Number(price) || 0,
+        Number(stock) || 0
+      ]
     );
 
     res.json(newProduct.rows[0]);
 
   } catch (err) {
-
     console.log(err);
 
     res.status(500).json({
@@ -121,11 +126,17 @@ router.put("/:id", async (req, res) => {
       `,
       [
         name,
-        price,
-        stock,
+        Number(price),
+        Number(stock),
         id
       ]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Produit introuvable"
+      });
+    }
 
     res.json(result.rows[0]);
 
@@ -149,13 +160,20 @@ router.delete("/:id", async (req, res) => {
 
     const { id } = req.params;
 
-    await pool.query(
+    const result = await pool.query(
       `
       DELETE FROM products
       WHERE id = $1
+      RETURNING *
       `,
       [id]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Produit introuvable"
+      });
+    }
 
     res.json({
       success: true,

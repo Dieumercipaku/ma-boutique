@@ -71,10 +71,11 @@ router.post("/login", async (req, res) => {
       token,
 
       user: {
-        id: user.rows[0].id,
-        name: user.rows[0].name,
-        role: user.rows[0].role
-      }
+  id: user.rows[0].id,
+  shop_id: user.rows[0].shop_id,
+  name: user.rows[0].name,
+  role: user.rows[0].role
+}
 
     });
 
